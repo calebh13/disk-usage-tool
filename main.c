@@ -42,5 +42,9 @@ int main(int argc, char* argv[])
     // Now we actually do the traversal!
     printf("Target directory: %s\n", target_directory);
 
+    // General idea: we're going to append the `direntry` pointers to a stack so we can traverse with DFS
+    // We do this with `opendir` on the root, then `readdir` repeatedly until we get a null pointer.
+    // Then as we traverse, add the result info to another stack, keeping track of usage (like du, usage is the sum of its children + itself)
+
     return 0;
 }
