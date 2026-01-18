@@ -1,0 +1,24 @@
+[
+  {
+    "file": "main.c",
+    "arguments": [
+      "gcc",
+      "main.c",
+      "-o",
+      "du"
+    ],
+    "directory": "/home/caleb/source/disk-usage-tool",
+    "output": "du"
+  },
+  {
+    "file": "stack.c",
+    "arguments": [
+      "gcc",
+      "stack.c",
+      "-o",
+      "du"
+    ],
+    "directory": "/home/caleb/source/disk-usage-tool",
+    "output": "du"
+  }
+]
