@@ -89,7 +89,12 @@ void traverseDirectory(char* target_directory) // TODO add option flags
     stack_push(&s, (void*)root_data);
 
     while (!stack_empty(&s)) {
-        root_data = stack_pop(&s);
+        // CRUCIAL IDEA: we're going to PEEK first, then keep modifying this record!
+        // This lets us print as soon as we hit a leaf node in the fs tree,
+        // and avoids incorrect data from printing early about directories. 
+        // I.e., we're going to print when we pop, and we must pop directories last.
+
+        root_data = stack_peek(&s);
 
         DIR* dir = opendir(root_data->path);
         if (!dir) {
@@ -116,6 +121,7 @@ void traverseDirectory(char* target_directory) // TODO add option flags
     }
 
     // How does du do it?
-    // I think they print when they free something
+    // I think they print when they actually pop from that stack.
+    // We're going to PEEK from the stack first, instead of popping!
 
 }

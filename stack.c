@@ -40,6 +40,15 @@ void* stack_pop(struct stack* s)
     return NULL;
 }
 
+void* stack_peek(struct stack* s)
+{
+    if (s->cur_size == 0) {
+        return NULL;
+    }
+    
+    return s->arr[s->cur_size - 1];
+}
+
 int stack_empty(struct stack* s)
 {
     return s->cur_size == 0;
