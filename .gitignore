@@ -1,8 +1,9 @@
 *
-!*.*
-*.d
-*.o
 !*/
-.vscode/*
+!*.*
+*.o
+*.d
+*.idx
+.vscode/
 .cache/*
 compile_commands.json
