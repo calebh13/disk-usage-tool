@@ -60,7 +60,7 @@ int main(int argc, char* argv[])
     }
 
     // Now we actually do the traversal!
-    printf("Target directory: %s\n", target_directory);
+    // printf("Target directory: %s\n", target_directory);
     return traverseDirectory(target_directory); // todo add option flags
 }
 
@@ -115,8 +115,7 @@ int traverseDirectory(char* target_directory) // TODO add option flags
         root_data = file_data_vec_get(&s, s.len - 1);
         struct stat stat_buf = {0};
         if (!root_data->dir) {
-            // reopening for some reason
-            printf("reopening %s\n", root_data->path);
+            // printf("opening %s\n", root_data->path);
             root_data->dir = opendir(root_data->path);
         }
         if (!root_data->dir) {
