@@ -1,5 +1,4 @@
 #include <stdlib.h>
-#include <string.h>
 
 #define DECL_VECTOR(T, name) \
     typedef struct { \
@@ -16,18 +15,18 @@
         v->free_elem = free_elem; \
     } \
     \
-    static inline void name##_push(name* v, T val) { \
+    static inline int name##_push(name* v, T val) { \
         if (v->len == v->cap) { \
             size_t new_cap = v->cap ? v->cap * 2 : 4; \
             T* tmp = realloc(v->data, new_cap * sizeof(T)); \
             if (!tmp) { \
-                fprintf(stderr, "vec realloc fail\n"); \
-                exit(EXIT_FAILURE); \
+                return -1; \
             } \
             v->data = tmp; \
             v->cap = new_cap; \
         } \
         v->data[v->len++] = val; \
+        return 0; \
     } \
     \
     static inline T* name##_get(name* v, size_t i) { \
@@ -45,13 +44,12 @@
         v->len = v->cap = 0; \
     } \
     \
-    static inline void name##_pop(name* v) { \
+    static inline int name##_pop(name* v) { \
         if (v->len > 0) { \
             v->len--; \
             if (v->free_elem) { \
                 v->free_elem(&v->data[v->len]); \
             } \
-        } else { \
-            fprintf(stderr, "tried popping from empty vector\n"); \
-        } \
+        } else return -1; \
+        return 0; \
     }

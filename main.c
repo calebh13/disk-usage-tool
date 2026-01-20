@@ -3,7 +3,6 @@
 #include <getopt.h>
 #include <sys/types.h>
 #include <dirent.h>
-// #include <errno.h>
 #include <string.h>
 #include <fcntl.h>
 #include <sys/types.h>
@@ -24,9 +23,10 @@
 
  /* TODO:
   * Implement hashmap to avoid overcounting hard links
-  * 
+  * Figure out nice way to print block size
+  * Support more options (-x, -h, etc)
   * Make shell-based tests (pipe du and clone output to files, sort them, diff them)
-  * 
+  * more?
  */
 
 int traverseDirectory(char* target_directory); // TODO add option flags
@@ -80,17 +80,14 @@ DECL_VECTOR(struct file_data, file_data_vec)
 // TODO: add error checking on all vector operations, and return error codes
 int traverseDirectory(char* target_directory) // TODO add option flags
 {
-    // TODO make these comments better
-    /* 
-     * Opendir function works on paths.
-     * General idea is to iterate through the `dirent`s with readdir(), and:
-     * - If directory, push it to the stack
-     * - If file, add its size to the parent's size
-     * This is POST-ORDER traversal! We need to know size of children before
-     * we know the size of the parent.
-     * Also, this does mean we'll have to construct a string each time :(
-     * Luckily we know the size ahead of time: PATH_MAX = 4096 bytes on Linux
-     */
+    /*
+     * The general strategy here is to do a postorder traversal of the directory,
+     * using an explicit stack for recursion to avoid stack overflows.
+     * The `readdir()` function is crucial here: it keeps track of which child is next,
+     * so we don't lose progress after pushing/popping from the stack.
+     * All the relevant data is stored in a `file_data` struct in the `file_data_vec` stack.
+     * See vec.h for the relevant macro.
+    */
 
     file_data_vec s;
     file_data_vec_init(&s, NULL);
@@ -109,13 +106,6 @@ int traverseDirectory(char* target_directory) // TODO add option flags
     struct file_data* parent_data = NULL;
 
     while (s.len > 0) {
-        // CRUCIAL IDEA: we're going to PEEK first, then keep modifying this record!
-        // This lets us print as soon as we hit a leaf node in the fs tree,
-        // and avoids incorrect data from printing early about directories. 
-        // I.e., we're going to print when we pop, and we must pop directories last.
-        // This implies a *postorder* traversal. This is achieved with the DIR* "iterator",
-        // because `readdir` keeps track of which directory is NEXT to visit.
-
         parent_data = file_data_vec_get(&s, s.len - 1);
         struct stat stat_buf = {0};
         if (!parent_data->dir) {
@@ -140,31 +130,35 @@ int traverseDirectory(char* target_directory) // TODO add option flags
                 continue;
             }
 
-            // Now we build the full path to `lstat` it
             snprintf(child_data.path, PATH_MAX - 1, "%s/%s", parent_data->path, ent->d_name);
             lstat(child_data.path, &stat_buf);
             
             // TODO add (st_dev, st_ino) to hashset to avoid overcounting hardlinks
             if (S_ISREG(stat_buf.st_mode)) {
-                // If regular file, add size immediately: files are "leaf nodes"
+                // If regular file, add size immediately. Files are leaf nodes, never any children
                 parent_data->size += stat_buf.st_blocks;
                 printf("%llu\t%s\n", (unsigned long long)stat_buf.st_blocks, child_data.path);
             } else {
-                // Otherwise, it's a directory, and we'll add size when we pop it (postorder)
-                file_data_vec_push(&s, child_data);
+                // Otherwise, it's a directory, and we'll add size when we pop it
+                if (file_data_vec_push(&s, child_data)) {
+                    printf("Error: Could not reallocate vector\n");
+                    return -1;
+                }
                 found_subdir = true;
-                break; // post-order: read subdirectory first
+                break; // postorder: read subdirectory first
             }
         }
         if (!found_subdir) {
-            // We can print this, since we've hit the bottom
-            // Also can add the size, since this is the last time we'll see it
+            // We're now ready to add the size of the dir itself and pop it from stack
             lstat(parent_data->path, &stat_buf);
             parent_data->size += stat_buf.st_blocks;
             printf("%llu\t%s\n", parent_data->size, parent_data->path);
-            // We'll now pop it, and add its size to the new top of the stack (its parent)
-            // but only if it exists, of course (this might be root node)
-            file_data_vec_pop(&s);
+            // now add its size to the new top of the stack (its parent) if it exists
+            // i.e., if this is not the root node
+            if (file_data_vec_pop(&s)) {
+                printf("Error: Tried to pop from empty vector\n");
+                return -1;
+            }
             if (s.len > 0) {
                 file_data_vec_get(&s, s.len - 1)->size += parent_data->size;
             }
